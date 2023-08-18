@@ -287,19 +287,20 @@ ipcMain.on("stopCommandReq", (event, args) => {
 ipcMain.on("CommandCollectionReq", (event, args) => {
     if (!commandCollection) {
         commandCollection = [
-            {
-                value: 'hook抖音',
-                link: 'source /Users/starsxu/Develop/hook_venv/{venv}/bin/activate && frida -U --no-pause -f com.ss.android.ugc.aweme -l /Users/starsxu/Develop/hook_venv/tiktok.js'
-            },
             {value: '启动工具', link: 'adb shell su "/data/local/tmp/{tools}"'},
             {value: '查看目录文件', link: 'adb shell su -c "ls /data/local/tmp/"'},
             {
                 value: 'iptable转发',
                 link: 'adb shell su -c "iptables -t nat -A OUTPUT -p tcp ! -d 127.0.0.1 -m owner --uid-owner {appID} --dport 0:65535 -j DNAT --to-destination 127.0.0.1:16666"'
-            },
-            {value: '获取当前app包名', link: 'adb shell dumpsys window | grep mCurrentFocus'},
-            {value: '通过包名获取app userId', link: 'adb shell dumpsys package {包名} | grep userId='},
+            }
         ]
+        if (process.platform === "darwin"){
+            commandCollection.push({value: '获取当前app包名', link: 'adb shell dumpsys window | grep mCurrentFocus'})
+            commandCollection.push({value: '通过包名获取app userId', link: 'adb shell dumpsys package {包名} | grep userId='})
+        }else {
+            commandCollection.push({value: '获取当前app包名', link: 'adb shell dumpsys window | findstr mCurrentFocus'})
+            commandCollection.push({value: '通过包名获取app userId', link: 'adb shell dumpsys package {包名} | findstr userId='})
+        }
     }
     event.reply("CommandCollectionResp", commandCollection)
 

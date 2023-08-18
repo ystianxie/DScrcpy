@@ -259,7 +259,7 @@ export default {
           }
           onCommand = onCommand.replace(`{${key.title}}`, key.value)
         }
-        if (onCommand.indexOf("-s") === -1 && onCommand.indexOf("adb") !== -1) {
+        if (onCommand.indexOf("-s") === -1 && onCommand.indexOf("adb") !== -1 && this.deviceId) {
           onCommand = onCommand.replace("adb ", "")
           onCommand = `adb -s ${this.deviceId} ${onCommand}`
         }
@@ -335,21 +335,22 @@ export default {
         return ""
       }
       let allCommandKey = this.restaurants.value.map(item => item.value)
-      console.log(allCommandKey)
       if (allCommandKey.indexOf(this.addCommand.value) !== -1) {
         return ElMessage.error('短语已存在，请重新输入！')
       }
       this.restaurants.value.push(this.addCommand)
       this.addCommand = {}
-      window.ipcRenderer.send("saveCommandCollectionReq", this.restaurants.value)
+      window.ipcRenderer.send("saveCommandCollectionReq", recursiveUnproxy(this.restaurants.value))
     },
     delCommandBtn(commandTitle) {
       console.log("删除命令", commandTitle)
       const index = this.restaurants.value.findIndex(option => option.value === commandTitle);
+      console.log(index)
       if (index > -1) {
         this.restaurants.value.splice(index, 1);
         ElMessage.success("删除成功！")
-        window.ipcRenderer.send("saveCommandCollectionReq", this.restaurants.value)
+        console.log(recursiveUnproxy(this.restaurants.value))
+        window.ipcRenderer.send("saveCommandCollectionReq", recursiveUnproxy(this.restaurants.value))
       } else {
         ElMessage.error("短语不存在！")
       }
@@ -430,6 +431,25 @@ function createFilter(queryString) {
     )
   }
 }
+
+function recursiveUnproxy(obj) {
+  if (typeof obj !== 'object' || obj === null) {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => recursiveUnproxy(item));
+  }
+
+  const unproxiedObj = {};
+  for (let key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      unproxiedObj[key] = recursiveUnproxy(obj[key]);
+    }
+  }
+  return unproxiedObj;
+}
+
 
 function getDate() {
   const date = new Date();
