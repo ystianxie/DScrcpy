@@ -1,0 +1,75 @@
+{
+  "name": "DScrcpy",
+  "version": "0.1.0",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron": "electron .",
+    "electron-build": "electron-builder",
+    "electron-build-win": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.starsxu.dscrcpy",
+    "productName": "DScrcpy",
+    "directories": {
+      "output": "dist_electron"
+    },
+    "files": [
+      "dist/**/*",
+      "App.vue",
+      "main.js",
+      "src/assets/**/*"
+    ],
+    "mac": {
+      "icon": "./src/assets/安卓logo.icns",
+      "category": "public.app-category.utilities",
+      "extraResources": [
+        {
+          "from": "adb",
+          "to": "adb"
+        }
+      ]
+    },
+    "win": {
+      "icon": "./src/assets/安卓logo.icns",
+      "target": [
+        "nsis"
+      ],
+      "asar": true,
+      "extraResources": [
+        {
+          "from": "scrcpy-win64",
+          "to": "scrcpy"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "include": "installer.nsh"
+    }
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.1.0",
+    "electron-settings": "^4.0.2",
+    "element-plus": "^2.3.5",
+    "iconv-lite": "^0.6.3",
+    "vue": "^3.3.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.2.3",
+    "electron": "^24.4.0",
+    "electron-builder": "^24.4.0",
+    "electron-is-dev": "^2.0.0",
+    "unplugin-auto-import": "^0.16.2",
+    "unplugin-element-plus": "^0.7.1",
+    "unplugin-vue-components": "^0.24.1",
+    "vite": "^4.3.9",
+    "vite-plugin-vue-devtools": "^1.0.0-beta.5",
+    "vue-electron": "^1.0.6"
+  }
+}
