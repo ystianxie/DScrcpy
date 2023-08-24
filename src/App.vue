@@ -311,7 +311,7 @@ export default {
       cb(results)
     },
     handleSelect(item) {
-      let fillMay = item.link.match(/\{([^}]+)\}/g);
+      let fillMay = item.link.match(/\{([^{}]+)\}/g);
       for (let key of fillMay || []) {
         key = key.replace(/\{|\}/g, "");
         this.fillKey.push({title: key, value: ""})
@@ -322,7 +322,7 @@ export default {
       if (!onCommand) {
         this.fillKey = []
       } else {
-        let fillMay = onCommand.link.match(/\{([^}]+)\}/g);
+        let fillMay = onCommand.link.match(/\{([^{}]+)\}/g);
         for (let key of fillMay || []) {
           key = key.replace(/\{|\}/g, "");
           this.fillKey.push({title: key, value: ""})

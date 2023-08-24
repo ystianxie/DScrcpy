@@ -39,7 +39,7 @@ function createWindow(window_x, window_y) {
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
-            devTools: false
+            // devTools: false
         }
     }
     if (process.platform !== "darwin") {
@@ -190,13 +190,13 @@ ipcMain.on("sendCommandReq", (event, args) => {
     if (args.senior) {
         if (process.platform === "darwin") {
             let text = args.onCommand + "\nread -p \"Press any key to exit\"\n"
-            fs.writeFile('userCommand.sh', text, (err) => {
+            fs.writeFile(`${app.getPath('userData')}/userCommand.sh`, text, (err) => {
                 if (err) {
                     return event.sender.send("userLog", {msg: "命令运行失败", level: "error"})
                 }
             })
-            exec("chmod +x userCommand.sh")
-            return shell.openPath("userCommand.sh")
+            execSync(`chmod +x "${app.getPath('userData')}/userCommand.sh"`)
+            return shell.openPath(`${app.getPath('userData')}/userCommand.sh`)
         } else {
             let text = args.onCommand + "\npause"
             fs.writeFile('userCommand.bat', text, (err) => {
@@ -246,20 +246,26 @@ ipcMain.on("sendCommandReq", (event, args) => {
         });
         return
     }
-    let app = args.onCommand.split(" ")[0]
+    let app_ = args.onCommand.split(" ")[0]
     let args_ = args.onCommand.split(" ").slice(1)
     if (localAdb) {
-        commandProcess = spawn(app, args_, {env})
-    } else if (app === "adb") {
+        commandProcess = spawn(app_, args_, {env})
+    } else if (app_ === "adb") {
         commandProcess = spawn(adbPath, args_)
     } else {
-        commandProcess = spawn(app, args_)
+        commandProcess = spawn(app_, args_)
     }
+    let buffer = Buffer.alloc(0)
     commandProcess.stdout.on('data', (data) => {
-        for (let row of data.toString().split("\n")) {
-            if (!row) continue
-            event.sender.send("userLog", {msg: row, level: 'info'})
+        buffer = Buffer.concat([buffer, data])
+        if (buffer.toString().endsWith("\n")) {
+            for (let row of buffer.toString().split("\n")) {
+                if (!row) continue
+                event.sender.send("userLog", {msg: row, level: 'info'})
+            }
+            buffer = Buffer.alloc(0)
         }
+
     })
     commandProcess.stderr.on('data', (msg) => {
         let level = msg.toString().indexOf("WARN") !== -1 ? "warning" : "error"
@@ -272,6 +278,12 @@ ipcMain.on("sendCommandReq", (event, args) => {
         event.sender.send("userLog", {msg: "高级命令，请使用右键运行", level: 'error'})
     });
     commandProcess.on('close', (code) => {
+        if (buffer.toString()) {
+            for (let row of buffer.toString().split("\n")) {
+                if (!row) continue
+                event.sender.send("userLog", {msg: row, level: 'info'})
+            }
+        }
         commandProcess = null
         event.sender.send("userLog", {msg: "命令完成", level: 'success'})
     })
@@ -287,19 +299,25 @@ ipcMain.on("stopCommandReq", (event, args) => {
 ipcMain.on("CommandCollectionReq", (event, args) => {
     if (!commandCollection) {
         commandCollection = [
-            {value: '启动工具', link: 'adb shell su "/data/local/tmp/{tools}"'},
+            {value: '启动工具', link: 'adb shell "su -c \'cd /data/local/tmp && ./{appName}\'"'},
             {value: '查看目录文件', link: 'adb shell su -c "ls /data/local/tmp/"'},
             {
                 value: 'iptable转发',
                 link: 'adb shell su -c "iptables -t nat -A OUTPUT -p tcp ! -d 127.0.0.1 -m owner --uid-owner {appID} --dport 0:65535 -j DNAT --to-destination 127.0.0.1:16666"'
             }
         ]
-        if (process.platform === "darwin"){
+        if (process.platform === "darwin") {
             commandCollection.push({value: '获取当前app包名', link: 'adb shell dumpsys window | grep mCurrentFocus'})
-            commandCollection.push({value: '通过包名获取app userId', link: 'adb shell dumpsys package {包名} | grep userId='})
-        }else {
+            commandCollection.push({
+                value: '通过包名获取app userId',
+                link: 'adb shell dumpsys package {包名} | grep userId='
+            })
+        } else {
             commandCollection.push({value: '获取当前app包名', link: 'adb shell dumpsys window | findstr mCurrentFocus'})
-            commandCollection.push({value: '通过包名获取app userId', link: 'adb shell dumpsys package {包名} | findstr userId='})
+            commandCollection.push({
+                value: '通过包名获取app userId',
+                link: 'adb shell dumpsys package {包名} | findstr userId='
+            })
         }
     }
     event.reply("CommandCollectionResp", commandCollection)
