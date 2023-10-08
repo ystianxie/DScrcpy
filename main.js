@@ -225,6 +225,7 @@ ipcMain.on("sendCommandReq", (event, args) => {
                 if (!row || row === " " || escape(row) === "%0D") continue
                 let level = row.indexOf("device") !== -1 && row.indexOf("attached") === -1 ? "success" : "info"
                 if (row.indexOf("attached") === -1) {
+                    row = row.replace("\r","")
                     devices.push(row)
                     console.log("连接设备：", row)
                 }
