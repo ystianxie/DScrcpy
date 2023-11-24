@@ -28,7 +28,7 @@ function createWindow(window_x, window_y) {
         console.log("窗口存在，关闭");
         mainWindow.close()
     }
-    let maxWidth = 660
+    let maxWidth = 670
     let window_config = {
         width: maxWidth,
         height: 525,
@@ -225,7 +225,7 @@ ipcMain.on("sendCommandReq", (event, args) => {
                 if (!row || row === " " || escape(row) === "%0D") continue
                 let level = row.indexOf("device") !== -1 && row.indexOf("attached") === -1 ? "success" : "info"
                 if (row.indexOf("attached") === -1) {
-                    row = row.replace("\r","")
+                    row = row.replace("\r", "")
                     devices.push(row)
                     console.log("连接设备：", row)
                 }

@@ -40,6 +40,15 @@
             <el-checkbox v-model="autoRefresh.enabled" @change="autoRefreshEvent" label="自动刷新" size="small"/>
           </el-col>
         </el-row>
+        <el-row>
+          <el-col :span="6" style="margin-left: 5px">
+            <el-checkbox v-model="displayConfig.pushToSDCard" label="推到SD卡" size="small"/>
+          </el-col>
+          <el-col :span="6">
+            <el-checkbox v-model="displayConfig.screenPointer" @change="screenPointerEvent" label="屏幕指针"
+                         size="small"/>
+          </el-col>
+        </el-row>
         <div>快捷命令</div>
         <el-row>
           <el-col :span="14" style="flex: 1">
@@ -143,7 +152,7 @@
           <el-table
               ref="logContainer"
               :data="logList"
-              style="width: 100%;height: 235px"
+              :style="{width:'100%', height: logFrameHeight}"
               :row-class-name='tableRowClassName'
           >
             <el-table-column prop="date" width="85"/>
@@ -170,6 +179,7 @@ export default {
       restaurants: {},
       fillValue: {},
       fillKey: [],
+      logFrameHeight: "254px",
       CommandDig: false,
       addCommandSwitch: false,
       addCommand: {},
@@ -180,7 +190,10 @@ export default {
         stayAwake: true,
         alwaysOnTop: false,
         borderless: false,
+        pushToSDCard: false,
+        screenPointer: false
       },
+      userCommandValue: {},
       autoRefresh: {
         enabled: true,
         timer: null
@@ -191,6 +204,8 @@ export default {
         port: ""
       },
       logList: [
+        {data: getDate(), info: "author:Dmj", level: "debug"},
+        {data: getDate(), info: "github:https://github.com/ystianxie/DScrcpy", level: "debug"},
         {data: getDate(), info: "scrcpy版本2.1.1", level: "debug"},
         {data: getDate(), info: "点击`日志`清空内容", level: "debug"},
         {data: getDate(), info: "右键点击`运行`使用控制台打开", level: "debug"}
@@ -222,7 +237,11 @@ export default {
       if (this.deviceId) {
         commandBox = ['-s', this.deviceId]
       }
-      commandBox.push("--push-target=/data/local/tmp/")
+      if (this.displayConfig.pushToSDCard) {
+        commandBox.push("--push-target=/sdcard")
+      } else {
+        commandBox.push("--push-target=/data/local/tmp/")
+      }
       if (this.displayConfig.stayAwake && this.displayConfig.closeScreen) {
         commandBox.push("-Sw")
       } else if (this.displayConfig.stayAwake) {
@@ -252,11 +271,13 @@ export default {
       let onCommand
       if (method === 'Quick') {
         if (!this.state) return
-        onCommand = this.restaurants.value.find(data => data.value === this.state).link
+        let command_ = this.restaurants.value.find(data => data.value === this.state)
+        onCommand = command_.link
         for (let key of this.fillKey) {
           if (!key.value) {
             return this.addLog("缺少参数", "error");
           }
+          this.userCommandValue[command_.value][key.title] = key.value
           onCommand = onCommand.replace(`{${key.title}}`, key.value)
         }
         if (onCommand.indexOf("-s") === -1 && onCommand.indexOf("adb") !== -1 && this.deviceId) {
@@ -274,6 +295,10 @@ export default {
         if (!this.wifiConnectionConfig.port) this.wifiConnectionConfig.port = "5555"
         onCommand = `adb disconnect ${this.wifiConnectionConfig.ip}:${this.wifiConnectionConfig.port}`
         this.addLog(`断开adb：${onCommand}`, 'debug')
+      } else if (method === "screenPointer") {
+        onCommand = ` shell settings put system pointer_location `
+        onCommand = (this.deviceId ? `adb -s ${this.deviceId}` : "adb") + onCommand
+        onCommand = onCommand + (this.displayConfig.screenPointer ? "1" : "0")
       } else {
         onCommand = "adb " + this.commandInput
         if (!this.commandInput) return
@@ -301,6 +326,10 @@ export default {
         clearInterval(this.autoRefresh.timer)
       }
     },
+    screenPointerEvent() {
+      console.log("屏幕指针")
+      this.sendCommand('screenPointer', false)
+    },
     tableRowClassName({row, rowIndex}) {
       return row.level ? row.level + "-row" : ""
     },
@@ -311,23 +340,28 @@ export default {
       cb(results)
     },
     handleSelect(item) {
+      if (!this.userCommandValue[item.value]) this.userCommandValue[item.value] = {}
+      this.fillKey = []
       let fillMay = item.link.match(/\{([^{}]+)\}/g);
       for (let key of fillMay || []) {
         key = key.replace(/\{|\}/g, "");
-        this.fillKey.push({title: key, value: ""})
+        this.fillKey.push({title: key, value: this.userCommandValue[item.value][key] || ""})
       }
+      // 更改日志框高度
+      this.logFrameHeight = 254 + this.fillKey.length * 54 + "px"
     },
     changeSelect(item) {
+      if (!this.userCommandValue[item.value]) this.userCommandValue[item.value] = {}
+      this.fillKey = []
       let onCommand = this.restaurants.value.find(data => data.value === item)
-      if (!onCommand) {
-        this.fillKey = []
-      } else {
+      if (onCommand) {
         let fillMay = onCommand.link.match(/\{([^{}]+)\}/g);
         for (let key of fillMay || []) {
           key = key.replace(/\{|\}/g, "");
-          this.fillKey.push({title: key, value: ""})
+          this.fillKey.push({title: key, value: this.userCommandValue[item.value][key] || ""})
         }
       }
+      if (!this.fillKey.length) this.logFrameHeight = "254px";
     },
     addCommandBtn() {
       console.log("添加命令", this.addCommand)
